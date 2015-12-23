@@ -1,59 +1,56 @@
 /**
- *  Smarter I'm At Home Simulator.
+ *  Copyright 2015 SmartThings
  *
- *  Author: Austin Fonacier
- *  Twitter: @austinrfnd
- *  Github: http://github.com/austinrfnd
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ *  in compliance with the License. You may obtain a copy of the License at:
  *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  for the specific language governing permissions and limitations under the License.
+ *
+ *  Turn It On For 5 Minutes
+ *  Turn on a switch when a contact sensor opens and then turn it back off 5 minutes later.
+ *
+ *  Author: SmartThings
  */
+definition(
+    name: "Turn It On For 5 Minutes",
+    namespace: "smartthings",
+    author: "SmartThings",
+    description: "When a SmartSense Multi is opened, a switch will be turned on, and then turned off after 5 minutes.",
+    category: "Safety & Security",
+    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Meta/light_contact-outlet.png",
+    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Meta/light_contact-outlet@2x.png"
+)
 
 preferences {
-  section("Light switches to turn on/off"){
-    input "switches", "capability.switch", title: "Switches", multiple: true, required: true
-  }
-  section("How often to cycle the lights"){
-    input "frequency_minutes", "number", title: "Minutes?"
-  }
-  section("Number of actives lights at any given time"){
-    input "number_of_active_lights", "number", title: "Number of active lights"
-  }
+	section("When it opens..."){
+		input "contact1", "capability.contactSensor"
+	}
+	section("Turn on a switch for 5 minutes..."){
+		input "switch1", "capability.switch"
+	}
 }
 
 def installed() {
-  scheduleCheck()
+	log.debug "Installed with settings: ${settings}"
+	subscribe(contact1, "contact.open", contactOpenHandler)
 }
 
-def updated() {
-  unsubscribe()
-  unschedule()
-  scheduleCheck()
+def updated(settings) {
+	log.debug "Updated with settings: ${settings}"
+	unsubscribe()
+	subscribe(contact1, "contact.open", contactOpenHandler)
 }
 
-// We want to turn off all the lights
-// Then we want to take a random set of lights and turn those on
-// Then run it again when the frequency demands it
-def scheduleCheck() {
-  // turn off all the switches
-  switches.off()
-
-  // grab a random switch
-  def random = new Random()
-  def inactive_switches = switches
-  for (int i = 0 ; i < number_of_active_lights ; i++) {
-    // if there are no inactive switches to turn on then let's break
-    if (inactive_switches.size() == 0){
-      break
-    }
-
-    // grab a random switch and turn it on
-    def random_int = random.nextInt(inactive_switches.size())
-    inactive_switches[random_int].on()
-
-    // then remove that switch from the pool off switches that can be turned on
-    inactive_switches.remove(random_int)
-  }
-
-  // re-run again when the frequency demands it
-  runIn(frequency_minutes * 60, scheduleCheck)
+def contactOpenHandler(evt) {
+	switch1.on()
+	def fiveMinuteDelay = 60 * 5
+	runIn(fiveMinuteDelay, turnOffSwitch)
 }
 
+def turnOffSwitch() {
+	switch1.off()
+}
